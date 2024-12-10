@@ -45,6 +45,7 @@ class Item(superclasses.ActionResolver, context.Context):
             attacks.append(superclasses.CombatAction(f"{self.verb} with {self.name}", superclasses.Attack(self.name, self.verb2, owner.skills[self.skill], self.damage, self.firearm), self))
 
         return attacks
+    
 
     def pickTargets(self, action, attacker, allies, enemies):
         options = []

@@ -2,7 +2,7 @@ from game import location
 import game.config as config
 import game.display as display
 from game.events import *
-from game.items import Item
+from game.items import Item 
 import random
 import numpy
 from game import event

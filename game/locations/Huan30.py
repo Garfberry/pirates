@@ -1,5 +1,5 @@
 
-from game import location
+from game.location import location, superclasses
 import game.config as config
 import game.display as display
 from game.events import *
@@ -110,6 +110,101 @@ class JeweledCutlass(item.Item):
         self.skill = "swords"
         self.verb = "cut"
         self.verb2 = "cuts"
+
+class HealingPotion(item.Item):
+    def __init__(self, healing_amount):
+        super().__init__("healing potion", 50)  
+        self.healing_amount = healing_amount
+        self.damage = (0, 0)  
+        self.skill = None  
+        self.verb = "use"  
+        self.verb2 = "uses"  
+        self.NUMBER_OF_ATTACKS = 1  
+
+    def getAttacks(self, owner):
+        
+        attacks = []
+        if self.ready():  
+            attacks.append(superclasses.CombatAction(f"{self.verb} the {self.name}", superclasses.Attack(self.name, self.verb2, 0, self.damage), self))
+        return attacks
+
+    def pickTargets(self, action, attacker, allies, enemies):
+        # heal ally
+        options = [f"Heal {a.name}" for a in allies]
+        choice = display.menu(options) 
+        return [allies[choice]]  
+
+    def resolve(self, action, moving, chosen_targets):
+        for t in chosen_targets:
+            # healing action
+            t.heal(self.healing_amount)  
+            return f"Healed {t.name} for {self.healing_amount} points."
+
+
+
+class Trees(location.SubLocation):
+    def __init__(self, m):
+        super().__init__(m)
+        self.name = "trees"
+        self.verbs['north'] = self
+        self.verbs['south'] = self
+        self.verbs['east'] = self
+        self.verbs['west'] = self
+        self.verbs['take'] = self
+        
+        # yo there is mad treeesure in the trees mannng
+        self.item_in_tree = JeweledCutlass()  
+        self.item_in_clothes = items.Flintlock()  
+        self.item_in_healing_potion = HealingPotion(25)  
+
+        self.event_chance = 50 #% parcent sar fifty parcent saaar
+        self.events.append(ManEatingMonkeys())
+        self.events.append(ShorePirates())
+
+    def process_verb(self, verb, cmd_list, nouns):
+        if verb == 'take':
+            
+            if "jeweled cutlass" in nouns:
+                config.the_player.add_to_inventory([self.item_in_tree])
+                display.announce("You have taken the Jeweled Cutlass.")
+            elif "flintlock" in nouns:
+                config.the_player.add_to_inventory([self.item_in_clothes])
+                display.announce("You took the Flintlock.")
+            elif "healing potion" in nouns:
+                config.the_player.add_to_inventory([self.item_in_healing_potion])
+                display.announce("You received the Healing Potion.")
+
+
+
+
+
+class MazeRoom:
+    def __init__(self, description, has_encounter=False):
+        self.description = description
+        self.encounter = SimpleEncounter() if has_encounter else None
+
+    def enter(self, player):
+        print(self.description)
+        if self.encounter:
+            self.encounter.trigger_encounter(player)
+
+class SimpleEncounter:
+    def __init__(self, description="You find a chest with strange carvings."):
+        self.description = description
+
+    def trigger_encounter(self, player):
+        print(self.description)
+        print("Do you want to open it? (yes/no)")
+        choice = input("> ").strip().lower()
+
+        if choice == "yes":
+            print("You open the chest and find a small pouch of coins!")
+            player.add_to_inventory("small pouch of coins")
+        elif choice == "no":
+            print("You decide to leave the chest untouched and move on.")
+        else:
+            print("You hesitate, unsure of what to do, and move on.")
+
 
 class ShorePirates (event.Event):
     petemade = False
@@ -247,63 +342,7 @@ class MazeSegment (location.SubLocation):
         self.west_loc = None
         self.remaining = ["north", "south", "west", "east"]
         self.depth = 0
-
-frontier = []
-start = MazeStart()
-end = MazeEnd()
-current_segment = MazeSegment()
-frontier.append(current_segment)
-start.starting_segment = current_segment
-current_segment["down"] = start
-current_segment.remaining.remove("down")
-end_placed = False
-while len(frontier) > 0:
-    current_segment = random.choice(frontier)
-    if end_placed and random.random() < .9:
-        next_segment = None
-    elif not end_placed and current_segment.depth > 2 and random.random() < .5:
-        next_segment = MazeEnd()
-    else:
-        next_segment = MazeSegment()
-        next_segment.depth = current_segment.depth + 1
-    connection = random.choice(current_segment.remaining)
-    current_segment[connection] = next_segment
-    if next_segment == None:
-        pass #deadend
-    elif type(next_segment) == MazeEnd:
-        next_segment.ending_segment = current_segment
-    else: #normal maze segment
-        if connection == "up":
-            back_connection = "down"
-        elif connection == "down":
-            back_connection = "up"
-        elif connection == "left":
-            back_connection = "right"
-        else:
-            back_connection = "left"
-        next_segment[back_connection] = current_segment
-        next_segment.remaining.removing(back_connection)
-    current_segment.remaining.remove(connection)
-    if len(current_segment.remaining) < 1:
-
-
     def enter (self):
         description = "Oh, looks like you got yourself into a maze. Use your own intution to find the way out"#Something about a maze segment?
         if self.north_loc != None:
             description += "The maze continues north here."
-        if self.south_loc != None:
-            description += "The maze continues south here"
-        if self.east_loc != None:
-            description += "The maze branches and turns to the east"
-        if self.west_loc != None:
-            description += "The maze branches and turns to the west"
-        #backward loc always true.
-        #if right loc "the maze branches or the maze turns right"
-        #if left loc "ditto"
-
-    def process_verb (self, verb, cmd_list, nouns):
-        if verb == "forward":
-            if(self.forward_loc != None):
-                config.the_player.next_loc = self.forward_loc
-            else:
-                display.announce("You see a wall.")
