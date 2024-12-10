@@ -48,7 +48,8 @@ class Combat():
                 chosen_targets = moving.pickTargets(chosen_action, moving, self.monsters, config.the_player.get_pirates())
             #Resolve
             chosen_action.resolve(chosen_action, moving, chosen_targets)
-            self.monsters = [m fo]
+            self.monsters = [m for m in self.monsters if m.health >0]
+            config.the_player.cleanup_items()
 
 class Monster(superclasses.CombatCritter):
     def __init__ (self, name: str, hp: int, attacks: dict[str, list], speed: float):
