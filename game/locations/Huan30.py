@@ -175,7 +175,71 @@ class Trees(location.SubLocation):
                 display.announce("You received the Healing Potion.")
 
 
+class MazeStart(location.SubLocation):
+    def __init__(self):
+        self.starting_segment = None
 
+
+class MazeEnd(location.SubLocation):
+    def __init__(self):
+        self.ending_segment = None
+
+
+class MazeSegment (location.SubLocation):
+    def __init__ (self, m):
+        super().__init__(m)
+        self.name = "Maze"
+        self.verbs['north'] = self
+        self.verbs['south'] = self
+        self.verbs['east'] = self
+        self.verbs['west'] = self
+
+        self.north_loc = None
+        self.south_loc = None
+        self.east_loc = None
+        self.west_loc = None
+        self.remaining = ["north", "south", "west", "east"]
+        self.depth = 0
+frontier = []
+start = MazeStart()
+end = MazeEnd()
+current_segment = MazeSegment()
+frontier.append(current_segment)
+start.starting_segment = current_segment
+current_segment.down = start
+current_segment.remaining.remove("down")
+end_placed = False
+while len(frontier) > 0:
+    current_segment = random.choice(frontier)
+    if end_placed and random.random() < .9: #Once the end is placed, 90% chance of dead ends.
+        next_segment = None
+    elif not end_placed and current_segment.depth > 2 and random.random() < .5:
+        next_segment = end
+        end_placed = True
+    else:
+        next_segment = MazeSegment()
+        next_segment.depth = current_segment.depth+1
+        frontier.append(next_segment)
+    connection = random.choice(current_segment.remaining)
+    setattr(current_segment, connection, next_segment)
+    if next_segment == None:
+        pass #dead end
+    elif type(next_segment) == MazeEnd:
+        next_segment.ending_segment = current_segment
+    else: #Normal maze segment
+        if connection == "up":
+            back_connection = "down"
+        elif connection == "down":
+            back_connection = "up"
+        elif connection == "left":
+            back_connection = "right"
+        else:
+            back_connection = "left"
+        setattr(next_segment, back_connection, current_segment)
+        next_segment.remaining.remove(back_connection)
+    current_segment.remaining.remove(connection)
+    if len(current_segment.remaining) < 1:
+        frontier.remove(current_segment)
 
 
 class MazeRoom:
@@ -279,24 +343,6 @@ class Beach_with_ship (location.SubLocation):
             display.announce ("You return to your ship.")
             self.main_location.end_visit()
 
-class Trees (location.SubLocation):
-    def __init__ (self, m):
-        super().__init__(m)
-        self.name = "trees"
-        self.verbs['north'] = self
-        self.verbs['south'] = self
-        self.verbs['east'] = self
-        self.verbs['west'] = self
-
-        # Include a couple of items and the ability to pick them up, for demo purposes
-        self.verbs['take'] = self
-        self.item_in_tree = JeweledCutlass() #Treasure from this island
-        self.item_in_clothes = items.Flintlock() #Flintlock from the general item list
-
-        self.event_chance = 50
-        self.events.append(ManEatingMonkeys())
-        self.events.append(ShorePirates())
-
 class Shed (location.SubLocation):
     def __init__ (self, m):
         super().__init__(m)
@@ -316,33 +362,3 @@ class Shed (location.SubLocation):
             config.the_player.next_loc = self.main_location.locations["northBeach"]
             config.the_player.go = True
 
-
-class MazeStart(location.SubLocation):
-    def __init__(self):
-        self.starting_segment = None
-
-
-class MazeEnd(location.SubLocation):
-    def __init__(self):
-        self.ending_segment = None
-
-
-class MazeSegment (location.SubLocation):
-    def __init__ (self, m):
-        super().__init__(m)
-        self.name = "Maze"
-        self.verbs['north'] = self
-        self.verbs['south'] = self
-        self.verbs['east'] = self
-        self.verbs['west'] = self
-
-        self.north_loc = None
-        self.south_loc = None
-        self.east_loc = None
-        self.west_loc = None
-        self.remaining = ["north", "south", "west", "east"]
-        self.depth = 0
-    def enter (self):
-        description = "Oh, looks like you got yourself into a maze. Use your own intution to find the way out"#Something about a maze segment?
-        if self.north_loc != None:
-            description += "The maze continues north here."
