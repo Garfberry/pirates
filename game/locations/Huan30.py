@@ -201,75 +201,40 @@ class MazeSegment (location.SubLocation):
         self.west_loc = None
         self.remaining = ["north", "south", "west", "east"]
         self.depth = 0
-frontier = []
-start = MazeStart()
-end = MazeEnd()
-current_segment = MazeSegment()
-frontier.append(current_segment)
-start.starting_segment = current_segment
-current_segment.down = start
-current_segment.remaining.remove("down")
-end_placed = False
-while len(frontier) > 0:
-    current_segment = random.choice(frontier)
-    if end_placed and random.random() < .9: #Once the end is placed, 90% chance of dead ends.
-        next_segment = None
-    elif not end_placed and current_segment.depth > 2 and random.random() < .5:
-        next_segment = end
-        end_placed = True
-    else:
-        next_segment = MazeSegment()
-        next_segment.depth = current_segment.depth+1
-        frontier.append(next_segment)
-    connection = random.choice(current_segment.remaining)
-    setattr(current_segment, connection, next_segment)
-    if next_segment == None:
-        pass #dead end
-    elif type(next_segment) == MazeEnd:
-        next_segment.ending_segment = current_segment
-    else: #Normal maze segment
-        if connection == "up":
-            back_connection = "down"
-        elif connection == "down":
-            back_connection = "up"
-        elif connection == "left":
-            back_connection = "right"
-        else:
-            back_connection = "left"
-        setattr(next_segment, back_connection, current_segment)
-        next_segment.remaining.remove(back_connection)
-    current_segment.remaining.remove(connection)
-    if len(current_segment.remaining) < 1:
-        frontier.remove(current_segment)
-
 
 class MazeRoom:
     def __init__(self, description, has_encounter=False):
         self.description = description
-        self.encounter = SimpleEncounter() if has_encounter else None
+        #self.event = SimpleEncounter() if has_encounter else None
+        self.event_chance = 25
+        self.events.append(SimpleEncounter())
 
     def enter(self, player):
         print(self.description)
         if self.encounter:
             self.encounter.trigger_encounter(player)
 
-class SimpleEncounter:
+class SimpleEncounter(event.Event):
     def __init__(self, description="You find a chest with strange carvings."):
         self.description = description
 
-    def trigger_encounter(self, player):
+    def process (self, world):
         print(self.description)
         print("Do you want to open it? (yes/no)")
         choice = input("> ").strip().lower()
 
         if choice == "yes":
             print("You open the chest and find a small pouch of coins!")
-            player.add_to_inventory("small pouch of coins")
+            config.the_player.add_to_inventory("small pouch of coins")
         elif choice == "no":
             print("You decide to leave the chest untouched and move on.")
         else:
             print("You hesitate, unsure of what to do, and move on.")
 
+        result = {}
+        result["message"] = "the marooned pirates are defeated!"
+        result["newevents"] = [ self ]
+        return result
 
 class ShorePirates (event.Event):
     petemade = False
@@ -326,6 +291,50 @@ class Island (location.Location):
         self.locations["beach"] = Beach_with_ship(self)
 
         self.starting_location = self.locations["beach"]
+        #Create maze for the island
+        frontier = []
+        start = MazeStart(self)
+        end = MazeEnd(self)
+        current_segment = MazeSegment(self)
+        frontier.append(current_segment)
+        start.starting_segment = current_segment
+        current_segment.down = start
+        current_segment.remaining.remove("down")
+        end_placed = False
+        while len(frontier) > 0:
+            current_segment = random.choice(frontier)
+            if end_placed and random.random() < .9: #Once the end is placed, 90% chance of dead ends.
+                next_segment = None
+            elif not end_placed and current_segment.depth > 2 and random.random() < .5:
+                next_segment = end
+                end_placed = True
+            else:
+                next_segment = MazeSegment()
+                next_segment.depth = current_segment.depth+1
+                frontier.append(next_segment)
+            connection = random.choice(current_segment.remaining)
+            setattr(current_segment, connection, next_segment)
+            if next_segment == None:
+                pass #dead end
+            elif type(next_segment) == MazeEnd:
+                next_segment.ending_segment = current_segment
+            else: #Normal maze segment
+                if connection == "up":
+                    back_connection = "down"
+                elif connection == "down":
+                    back_connection = "up"
+                elif connection == "left":
+                    back_connection = "right"
+                else:
+                    back_connection = "left"
+                setattr(next_segment, back_connection, current_segment)
+                next_segment.remaining.remove(back_connection)
+            current_segment.remaining.remove(connection)
+            if len(current_segment.remaining) < 1:
+                frontier.remove(current_segment)
+        self.locations["maze_start"] = start
+        self.locations["maze_end"] = end
+
 
     def enter (self, ship):
         display.announce ("arrived at an island", pause=False)
