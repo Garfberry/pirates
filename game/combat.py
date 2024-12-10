@@ -51,7 +51,6 @@ class Combat():
             self.monsters = [m for m in self.monsters if m.health >0]
             config.the_player.cleanup_items()
 
-
 class Monster(superclasses.CombatCritter):
     def __init__ (self, name: str, hp: int, attacks: dict[str, list], speed: float):
         super().__init__(name, hp, speed)
