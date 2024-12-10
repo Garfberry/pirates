@@ -1,5 +1,6 @@
 
-from game.location import location, superclasses
+import game.location as location
+import game.superclasses as superclasses
 import game.config as config
 import game.display as display
 from game.events import *
@@ -305,6 +306,7 @@ class ShorePirates (event.Event):
         n = 1
         while n <= n_appearing:
             monsters.append(Maroonee("Mumified maroonee "+str(n)))
+
             n += 1
         display.announce ("You are attacked by a crew of marooned pirates!")
         combat.Combat(monsters).combat()
